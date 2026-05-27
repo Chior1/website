@@ -15,6 +15,7 @@ export function UploadSimulator() {
   const [fileSize, setFileSize] = useState("");
   const [fileType, setFileType] = useState("");
   const [message, setMessage] = useState("");
+  const [fileWarning, setFileWarning] = useState("");
 
   const selectedFormats = taskType === "audio" ? audioFormats : videoFormats;
   const typeLabel = taskType === "audio" ? "音频纪要" : "视频字幕";
@@ -22,6 +23,11 @@ export function UploadSimulator() {
   const detectedFormat = useMemo(() => {
     const extension = fileName.split(".").pop()?.toUpperCase();
     return extension && selectedFormats.includes(extension) ? extension : selectedFormats[0];
+  }, [fileName, selectedFormats]);
+
+  const isCurrentFileMatched = useMemo(() => {
+    const extension = fileName.split(".").pop()?.toUpperCase();
+    return Boolean(extension && selectedFormats.includes(extension));
   }, [fileName, selectedFormats]);
 
   function selectType(nextType: "audio" | "video") {
@@ -33,11 +39,20 @@ export function UploadSimulator() {
       setProjectName("课程剪辑字幕稿");
       setFileName("课程剪辑片段.mp4");
     }
+    setFileSize("");
+    setFileType("");
+    setFileWarning("");
+    setMessage("");
   }
 
   function createLocalTask() {
     if (!projectName.trim()) {
       setMessage("请先填写项目名称。");
+      return;
+    }
+
+    if (!isCurrentFileMatched) {
+      setFileWarning(`当前文件格式和「${typeLabel}」不匹配，请换一个文件或切换任务类型。`);
       return;
     }
 
@@ -60,12 +75,20 @@ export function UploadSimulator() {
   }
 
   function previewFile(file: File) {
+    const extension = file.name.split(".").pop()?.toUpperCase() ?? "";
+    const matched = selectedFormats.includes(extension);
+
     setFileName(file.name);
     setFileSize(formatFileSize(file.size));
     setFileType(file.type || "浏览器未识别");
     if (!projectName.trim() || projectName === "产品方案周会录音" || projectName === "课程剪辑字幕稿") {
       setProjectName(file.name.replace(/\.[^/.]+$/, ""));
     }
+    setFileWarning(
+      matched
+        ? ""
+        : `当前选择的是 ${extension || "未知"} 文件，但「${typeLabel}」建议使用 ${selectedFormats.join("、")}。`
+    );
     setMessage("已读取本地文件信息。文件没有上传，也没有发送给 AI。");
   }
 
@@ -74,12 +97,15 @@ export function UploadSimulator() {
       <div className="section-head">
         <div>
           <h2>新建任务</h2>
-          <p className="muted">这里会创建一个本地演示项目，暂时不会上传真实文件，也不会调用 AI。</p>
+          <p className="muted">
+            这里会创建一个本地演示项目，会检查文件格式和当前任务类型是否匹配，但不会上传真实文件，也不会调用 AI。
+          </p>
         </div>
         <span className="badge draft">本地保存</span>
       </div>
 
       {message && <p className="notice">{message}</p>}
+      {fileWarning && <p className="warning">{fileWarning}</p>}
 
       <div className="grid two">
         <button
@@ -162,6 +188,12 @@ export function UploadSimulator() {
         </div>
 
         <p className="muted">当前只做本地文件预览和项目记录，不上传、不识别、不接 AI。</p>
+
+        {!isCurrentFileMatched && (
+          <p className="warning">
+            文件格式和当前任务类型不匹配。你可以切换任务类型，或选择一个常见支持格式。
+          </p>
+        )}
 
         <div className="format-groups" aria-label="常见文件格式">
           <div>

@@ -75,8 +75,15 @@ export function deleteExportRecord(id: string) {
   return nextRecords;
 }
 
+export function deleteExportRecordsByProject(projectId: string) {
+  const nextRecords = readExportRecords().filter(
+    (record) => record.projectId !== projectId
+  );
+  writeExportRecords(nextRecords);
+  return nextRecords;
+}
+
 export function resetExportRecords() {
   writeExportRecords(seedExportRecords);
   return seedExportRecords;
 }
-

@@ -5,10 +5,12 @@ import { useEffect, useMemo, useState } from "react";
 import { StatusBadge } from "@/components/StatusBadge";
 import {
   deleteExportRecord,
+  deleteExportRecordsByProject,
   readExportRecords,
   resetExportRecords,
   type ExportRecord
 } from "@/lib/export-records";
+import { deleteDraft } from "@/lib/project-drafts";
 import {
   deleteProject,
   readProjects,
@@ -65,8 +67,11 @@ export function DashboardClient() {
     if (!confirmed) return;
 
     const nextProjects = deleteProject(project.id);
+    const nextExportRecords = deleteExportRecordsByProject(project.id);
+    deleteDraft(project.id);
     setItems(nextProjects);
-    setMessage(`「${project.title}」已从本地项目列表删除。`);
+    setExportItems(nextExportRecords);
+    setMessage(`「${project.title}」已删除，并已同步清理它的草稿和导出记录。`);
   }
 
   function restoreExamples() {
@@ -211,6 +216,7 @@ export function DashboardClient() {
                     className="button secondary compact"
                     onClick={() => removeProject(project)}
                     type="button"
+                    title="删除项目时会同步清理它的本地草稿和导出记录"
                   >
                     删除
                   </button>
@@ -291,8 +297,8 @@ export function DashboardClient() {
                 </div>
               ))}
               {exportItems.length === 0 && (
-                <p className="muted">当前没有导出记录。导出纪要或字幕后会显示在这里。</p>
-              )}
+              <p className="muted">当前没有导出记录。导出纪要或字幕后会显示在这里。删除项目时会同步清理相关草稿和导出记录。</p>
+            )}
             </div>
           </section>
         </div>
