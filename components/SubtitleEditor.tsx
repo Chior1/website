@@ -1,9 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { downloadTextFile } from "@/lib/download";
 import { subtitles } from "@/lib/mock-data";
+import type { LocalProject } from "@/lib/local-projects";
+import { readDraft, writeDraft } from "@/lib/project-drafts";
+import { addExportRecord } from "@/lib/export-records";
 
 type SubtitleLine = {
   start: string;
@@ -40,11 +43,22 @@ function toVttTime(time: string) {
   return `${time}.000`;
 }
 
-export function SubtitleEditor() {
+export function SubtitleEditor({ project }: { project?: LocalProject }) {
   const [items, setItems] = useState<SubtitleLine[]>(subtitles);
   const [searchText, setSearchText] = useState("");
   const [replaceText, setReplaceText] = useState("");
   const [message, setMessage] = useState("");
+  const [draftMessage, setDraftMessage] = useState("");
+  const projectDraftId = project?.id ?? "demo-video-subtitles";
+
+  useEffect(() => {
+    const draft = readDraft(projectDraftId);
+
+    if (draft?.kind !== "subtitle") return;
+
+    setItems(draft.items);
+    setDraftMessage(`已恢复 ${draft.savedAt} 保存的本地草稿。`);
+  }, [projectDraftId]);
 
   const matchCount = useMemo(() => {
     if (!searchText) return 0;
@@ -117,14 +131,24 @@ export function SubtitleEditor() {
   }
 
   function exportPlainText() {
+    const fileName = `${project?.title ?? "课程剪辑字幕"}.txt`;
+
     downloadTextFile(
-      "课程剪辑字幕.txt",
+      fileName,
       items.map((item) => `${item.start}-${item.end} ${item.text}`).join("\n")
     );
+    addExportRecord({
+      projectId: project?.id ?? "demo-video-subtitles",
+      projectTitle: project?.title ?? "课程剪辑字幕稿",
+      fileName,
+      type: "文字稿",
+      format: "TXT"
+    });
     setMessage("已导出纯文本字幕。");
   }
 
   function exportSrt() {
+    const fileName = `${project?.title ?? "课程剪辑字幕"}.srt`;
     const content = items
       .map((item, index) =>
         [
@@ -135,11 +159,19 @@ export function SubtitleEditor() {
       )
       .join("\n\n");
 
-    downloadTextFile("课程剪辑字幕.srt", content);
+    downloadTextFile(fileName, content);
+    addExportRecord({
+      projectId: project?.id ?? "demo-video-subtitles",
+      projectTitle: project?.title ?? "课程剪辑字幕稿",
+      fileName,
+      type: "字幕文件",
+      format: "SRT"
+    });
     setMessage("已导出 SRT 字幕。");
   }
 
   function exportVtt() {
+    const fileName = `${project?.title ?? "课程剪辑字幕"}.vtt`;
     const content = [
       "WEBVTT",
       "",
@@ -150,27 +182,53 @@ export function SubtitleEditor() {
         .join("\n\n")
     ].join("\n");
 
-    downloadTextFile("课程剪辑字幕.vtt", content);
+    downloadTextFile(fileName, content);
+    addExportRecord({
+      projectId: project?.id ?? "demo-video-subtitles",
+      projectTitle: project?.title ?? "课程剪辑字幕稿",
+      fileName,
+      type: "字幕文件",
+      format: "VTT"
+    });
     setMessage("已导出 VTT 字幕。");
+  }
+
+  function saveDraft() {
+    const savedAt = new Date().toLocaleString("zh-CN");
+
+    writeDraft(projectDraftId, {
+      kind: "subtitle",
+      items,
+      savedAt
+    });
+    setDraftMessage(`已保存本地草稿：${savedAt}`);
   }
 
   return (
     <>
       <div className="workspace-header">
         <div>
-          <h1>课程剪辑字幕稿</h1>
-          <p className="muted">示例状态：已生成字幕草稿，可以编辑文字、时间码和字幕块。</p>
+          <h1>{project?.title ?? "课程剪辑字幕稿"}</h1>
+          <p className="muted">
+            {project
+              ? `${project.fileName} · ${project.fileFormat} · ${project.status}。当前仍使用示例字幕内容。`
+              : "示例状态：已生成字幕草稿，可以编辑文字、时间码和字幕块。"}
+          </p>
         </div>
         <div className="actions">
           <Link className="button secondary" href="/dashboard">
             返回工作台
           </Link>
+          <button className="button secondary" onClick={saveDraft} type="button">
+            保存草稿
+          </button>
           <button className="button primary" onClick={exportSrt} type="button">
             导出字幕
           </button>
         </div>
       </div>
 
+      {draftMessage && <p className="notice">{draftMessage}</p>}
       {message && <p className="notice">{message}</p>}
 
       <div className="editor-grid video">
@@ -283,4 +341,3 @@ export function SubtitleEditor() {
     </>
   );
 }
-

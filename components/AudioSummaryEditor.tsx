@@ -1,9 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { downloadTextFile } from "@/lib/download";
 import { summary, transcript } from "@/lib/mock-data";
+import type { LocalProject } from "@/lib/local-projects";
+import { readDraft, writeDraft } from "@/lib/project-drafts";
+import { addExportRecord } from "@/lib/export-records";
 
 type TranscriptLine = {
   time: string;
@@ -11,12 +14,26 @@ type TranscriptLine = {
   text: string;
 };
 
-export function AudioSummaryEditor() {
+export function AudioSummaryEditor({ project }: { project?: LocalProject }) {
   const [lines, setLines] = useState<TranscriptLine[]>(transcript);
   const [overview, setOverview] = useState(summary.overview);
   const [decisions, setDecisions] = useState(summary.decisions);
   const [todos, setTodos] = useState(summary.todos);
   const [exportMessage, setExportMessage] = useState("");
+  const [draftMessage, setDraftMessage] = useState("");
+  const projectDraftId = project?.id ?? "demo-audio-summary";
+
+  useEffect(() => {
+    const draft = readDraft(projectDraftId);
+
+    if (draft?.kind !== "audio") return;
+
+    setLines(draft.lines);
+    setOverview(draft.overview);
+    setDecisions(draft.decisions);
+    setTodos(draft.todos);
+    setDraftMessage(`已恢复 ${draft.savedAt} 保存的本地草稿。`);
+  }, [projectDraftId]);
 
   const speakerNames = useMemo(
     () => Array.from(new Set(lines.map((line) => line.speaker))),
@@ -59,27 +76,58 @@ export function AudioSummaryEditor() {
       transcriptText
     ].join("\n");
 
-    downloadTextFile("产品方案周会纪要.txt", content);
+    const fileName = `${project?.title ?? "产品方案周会"}纪要.txt`;
+
+    downloadTextFile(fileName, content);
+    addExportRecord({
+      projectId: project?.id ?? "demo-audio-summary",
+      projectTitle: project?.title ?? "产品方案周会录音",
+      fileName,
+      type: "会议纪要",
+      format: "TXT"
+    });
     setExportMessage("已生成示例纪要文件，内容来自你当前编辑的文字。");
+  }
+
+  function saveDraft() {
+    const savedAt = new Date().toLocaleString("zh-CN");
+
+    writeDraft(projectDraftId, {
+      kind: "audio",
+      lines,
+      overview,
+      decisions,
+      todos,
+      savedAt
+    });
+    setDraftMessage(`已保存本地草稿：${savedAt}`);
   }
 
   return (
     <>
       <div className="workspace-header">
         <div>
-          <h1>产品方案周会录音</h1>
-          <p className="muted">示例状态：已完成转写，可以在本页直接修改文字和发言人。</p>
+          <h1>{project?.title ?? "产品方案周会录音"}</h1>
+          <p className="muted">
+            {project
+              ? `${project.fileName} · ${project.fileFormat} · ${project.status}。当前仍使用示例转写内容。`
+              : "示例状态：已完成转写，可以在本页直接修改文字和发言人。"}
+          </p>
         </div>
         <div className="actions">
           <Link className="button secondary" href="/dashboard">
             返回工作台
           </Link>
+          <button className="button secondary" onClick={saveDraft} type="button">
+            保存草稿
+          </button>
           <button className="button primary" onClick={exportSummary} type="button">
             导出纪要
           </button>
         </div>
       </div>
 
+      {draftMessage && <p className="notice">{draftMessage}</p>}
       {exportMessage && <p className="notice">{exportMessage}</p>}
 
       <div className="editor-grid">
@@ -228,4 +276,3 @@ export function AudioSummaryEditor() {
     </>
   );
 }
-
