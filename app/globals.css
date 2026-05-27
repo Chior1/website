@@ -143,6 +143,22 @@ select {
   background: var(--surface-soft);
 }
 
+.button.danger {
+  color: #ffffff;
+  background: var(--danger);
+}
+
+.button.compact {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .hero {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
@@ -628,12 +644,113 @@ button.card:hover,
   background: #ffffff;
 }
 
+.textarea {
+  min-height: 76px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.textarea.large {
+  min-height: 120px;
+}
+
+.speaker-editor {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.speaker-input {
+  min-height: 38px;
+  padding: 8px 10px;
+  font-weight: 900;
+}
+
+.speaker-input.one {
+  color: var(--primary-dark);
+}
+
+.speaker-input.two {
+  color: var(--teal);
+}
+
+.notice {
+  border: 1px solid #bfe5d0;
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  color: #0d6f3a;
+  background: #effaf4;
+  font-weight: 800;
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.subtitle-row.editable {
+  align-items: stretch;
+}
+
+.time-edit {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.timecode-input {
+  min-height: 36px;
+  color: var(--primary-dark);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.confirm-box {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  margin-top: 14px;
+  padding: 14px;
+  background: #ffffff;
+}
+
 .upload-drop {
   border: 1px dashed #a7c9ee;
   border-radius: var(--radius);
   padding: 26px;
   background: #f7fbff;
   text-align: center;
+}
+
+.format-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 18px auto;
+  max-width: 720px;
+  text-align: left;
+}
+
+.format-groups p {
+  margin-bottom: 8px;
+}
+
+.format-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.format-list span {
+  border: 1px solid #d8e7f7;
+  border-radius: 999px;
+  padding: 7px 10px;
+  color: var(--primary-dark);
+  background: #ffffff;
+  font-size: 12px;
+  font-weight: 900;
 }
 
 .footer-note {
@@ -649,6 +766,7 @@ button.card:hover,
   .grid.two,
   .grid.three,
   .steps,
+  .format-groups,
   .workspace,
   .dashboard-grid,
   .editor-grid,

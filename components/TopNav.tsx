@@ -5,8 +5,8 @@ export function TopNav() {
     <header className="topbar">
       <div className="container topbar-inner">
         <Link className="brand" href="/">
-          <span className="brand-mark">声</span>
-          <span>声文工台</span>
+          <span className="brand-mark">听</span>
+          <span>听墨</span>
         </Link>
         <nav className="nav" aria-label="首页导航">
           <a href="#features">产品功能</a>
@@ -26,4 +26,3 @@ export function TopNav() {
     </header>
   );
 }
-

@@ -21,8 +21,8 @@ export function AppShell({
     <div className="workspace">
       <aside className="sidebar">
         <Link className="brand" href="/">
-          <span className="brand-mark">声</span>
-          <span>声文工台</span>
+          <span className="brand-mark">听</span>
+          <span>听墨</span>
         </Link>
         <nav className="side-nav" aria-label="工作台导航">
           {navItems.map((item) => (
@@ -40,4 +40,3 @@ export function AppShell({
     </div>
   );
 }
-

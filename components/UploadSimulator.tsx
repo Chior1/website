@@ -3,6 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 
+const audioFormats = ["MP3", "WAV", "M4A", "AAC", "FLAC", "OGG", "WMA"];
+const videoFormats = ["MP4", "MOV", "MKV", "AVI", "WEBM", "M4V", "WMV", "FLV"];
+
 export function UploadSimulator() {
   const [taskType, setTaskType] = useState<"audio" | "video">("audio");
   const [fileName, setFileName] = useState("产品方案周会录音.mp3");
@@ -56,6 +59,24 @@ export function UploadSimulator() {
       <div className="upload-drop" style={{ marginTop: 18 }}>
         <p className="row-title">示例文件：{fileName}</p>
         <p className="muted">当前阶段不会真的上传文件，只模拟“上传后进入结果页”的体验。</p>
+        <div className="format-groups" aria-label="常见文件格式">
+          <div>
+            <p className="small muted">常见音频格式</p>
+            <div className="format-list">
+              {audioFormats.map((format) => (
+                <span key={format}>{format}</span>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="small muted">常见视频格式</p>
+            <div className="format-list">
+              {videoFormats.map((format) => (
+                <span key={format}>{format}</span>
+              ))}
+            </div>
+          </div>
+        </div>
         <Link className="button primary" href={targetHref}>
           模拟开始处理
         </Link>
@@ -63,4 +84,3 @@ export function UploadSimulator() {
     </div>
   );
 }
-
