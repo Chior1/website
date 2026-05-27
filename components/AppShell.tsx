@@ -6,6 +6,7 @@ const navItems = [
   { label: "音频纪要", href: "/audio-summary" },
   { label: "视频字幕", href: "/video-subtitles" },
   { label: "导出中心", href: "/dashboard#exports" },
+  { label: "真实接入", href: "/integration-review" },
   { label: "团队空间", href: "/dashboard#team" },
   { label: "设置", href: "/settings" }
 ];
