@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { downloadTextFile } from "@/lib/download";
 import { summary, transcript } from "@/lib/mock-data";
@@ -22,18 +22,46 @@ export function AudioSummaryEditor({ project }: { project?: LocalProject }) {
   const [exportMessage, setExportMessage] = useState("");
   const [draftMessage, setDraftMessage] = useState("");
   const projectDraftId = project?.id ?? "demo-audio-summary";
+  const autoSaveReadyRef = useRef(false);
 
   useEffect(() => {
+    autoSaveReadyRef.current = false;
     const draft = readDraft(projectDraftId);
 
-    if (draft?.kind !== "audio") return;
+    if (draft?.kind === "audio") {
+      setLines(draft.lines);
+      setOverview(draft.overview);
+      setDecisions(draft.decisions);
+      setTodos(draft.todos);
+      setDraftMessage(`已恢复 ${draft.savedAt} 保存的本地草稿。`);
+    }
 
-    setLines(draft.lines);
-    setOverview(draft.overview);
-    setDecisions(draft.decisions);
-    setTodos(draft.todos);
-    setDraftMessage(`已恢复 ${draft.savedAt} 保存的本地草稿。`);
+    const timer = window.setTimeout(() => {
+      autoSaveReadyRef.current = true;
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [projectDraftId]);
+
+  useEffect(() => {
+    if (!autoSaveReadyRef.current) return;
+
+    const timer = window.setTimeout(() => {
+      const savedAt = new Date().toLocaleString("zh-CN");
+
+      writeDraft(projectDraftId, {
+        kind: "audio",
+        lines,
+        overview,
+        decisions,
+        todos,
+        savedAt
+      });
+      setDraftMessage(`已自动保存本地草稿：${savedAt}`);
+    }, 900);
+
+    return () => window.clearTimeout(timer);
+  }, [decisions, lines, overview, projectDraftId, todos]);
 
   const speakerNames = useMemo(
     () => Array.from(new Set(lines.map((line) => line.speaker))),
@@ -112,6 +140,7 @@ export function AudioSummaryEditor({ project }: { project?: LocalProject }) {
             {project
               ? `${project.fileName} · ${project.fileFormat} · ${project.status}。当前仍使用示例转写内容。`
               : "示例状态：已完成转写，可以在本页直接修改文字和发言人。"}
+            {" "}编辑后会自动保存到当前浏览器，也可以手动保存草稿。
           </p>
         </div>
         <div className="actions">

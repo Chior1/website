@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum ProjectType {
+  AUDIO_SUMMARY  @map("audio_summary")
+  VIDEO_SUBTITLE @map("video_subtitle")
+
+  @@map("project_type")
+}
+
+enum ProjectStatus {
+  PROCESSING @map("processing")
+  COMPLETED  @map("completed")
+  DRAFT      @map("draft")
+
+  @@map("project_status")
+}
+
+enum DraftKind {
+  AUDIO    @map("audio")
+  SUBTITLE @map("subtitle")
+
+  @@map("draft_kind")
+}
+
+enum ExportRecordType {
+  MEETING_SUMMARY @map("meeting_summary")
+  SUBTITLE_FILE   @map("subtitle_file")
+  TRANSCRIPT_TEXT @map("transcript_text")
+
+  @@map("export_record_type")
+}
+
+enum ExportFormat {
+  TXT
+  SRT
+  VTT
+
+  @@map("export_format")
+}
+
+model Project {
+  id           String         @id @default(uuid()) @db.Uuid
+  title        String
+  type         ProjectType
+  status       ProjectStatus  @default(PROCESSING)
+  fileName     String         @map("file_name")
+  fileFormat   String         @map("file_format")
+  fileSize     String?        @map("file_size")
+  fileMimeType String?        @map("file_mime_type")
+  duration     String?
+  owner        String?
+  progress     Int            @default(0)
+  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  draft        ProjectDraft?
+  exportRecords ExportRecord[]
+
+  @@map("projects")
+}
+
+model ProjectDraft {
+  id        String    @id @default(uuid()) @db.Uuid
+  projectId String   @unique @map("project_id") @db.Uuid
+  kind      DraftKind
+  content   Json
+  savedAt   DateTime  @default(now()) @map("saved_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_drafts")
+}
+
+model ExportRecord {
+  id           String           @id @default(uuid()) @db.Uuid
+  projectId    String          @map("project_id") @db.Uuid
+  projectTitle String          @map("project_title")
+  fileName     String          @map("file_name")
+  type         ExportRecordType
+  format       ExportFormat
+  exportedAt   DateTime        @default(now()) @map("exported_at") @db.Timestamptz(6)
+  createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  project      Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId], map: "export_records_project_id_idx")
+  @@map("export_records")
+}

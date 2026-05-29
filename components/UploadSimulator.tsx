@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createProject } from "@/lib/local-projects";
+import { createBackendProject } from "@/lib/project-api";
 
 const audioFormats = ["MP3", "WAV", "M4A", "AAC", "FLAC", "OGG", "WMA"];
 const videoFormats = ["MP4", "MOV", "MKV", "AVI", "WEBM", "M4V", "WMV", "FLV"];
@@ -16,6 +17,7 @@ export function UploadSimulator() {
   const [fileType, setFileType] = useState("");
   const [message, setMessage] = useState("");
   const [fileWarning, setFileWarning] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
 
   const selectedFormats = taskType === "audio" ? audioFormats : videoFormats;
   const typeLabel = taskType === "audio" ? "音频纪要" : "视频字幕";
@@ -45,7 +47,7 @@ export function UploadSimulator() {
     setMessage("");
   }
 
-  function createLocalTask() {
+  async function createTask() {
     if (!projectName.trim()) {
       setMessage("请先填写项目名称。");
       return;
@@ -56,15 +58,40 @@ export function UploadSimulator() {
       return;
     }
 
-    createProject({
+    const payload: {
+      title: string;
+      type: "音频纪要" | "视频字幕";
+      fileName: string;
+      fileFormat: string;
+      fileSize: string;
+      fileMimeType: string;
+    } = {
       title: projectName.trim(),
       type: typeLabel,
       fileName: fileName.trim() || "未命名文件",
       fileFormat: detectedFormat,
       fileSize: fileSize || "未读取",
       fileMimeType: fileType || "未知类型"
-    });
-    router.push("/dashboard");
+    };
+
+    setIsCreating(true);
+    setMessage("正在创建任务。优先保存到 Supabase；如果后端未配置，会自动退回本地演示。");
+
+    try {
+      await createBackendProject(payload);
+      setMessage("已创建 Supabase 项目。");
+      router.push("/dashboard");
+    } catch (error) {
+      createProject(payload);
+      setMessage(
+        error instanceof Error
+          ? `${error.message} 已改为创建浏览器本地演示任务。`
+          : "后端暂时不可用，已改为创建浏览器本地演示任务。"
+      );
+      router.push("/dashboard");
+    } finally {
+      setIsCreating(false);
+    }
   }
 
   function formatFileSize(bytes: number) {
@@ -98,7 +125,7 @@ export function UploadSimulator() {
         <div>
           <h2>新建任务</h2>
           <p className="muted">
-            这里会创建一个本地演示项目，会检查文件格式和当前任务类型是否匹配，但不会上传真实文件，也不会调用 AI。
+            这里会优先创建 Supabase 项目；如果后端未配置，会退回本地演示。当前不会上传真实文件，也不会调用 AI。
           </p>
         </div>
         <span className="badge draft">本地保存</span>
@@ -187,7 +214,7 @@ export function UploadSimulator() {
           </div>
         </div>
 
-        <p className="muted">当前只做本地文件预览和项目记录，不上传、不识别、不接 AI。</p>
+        <p className="muted">当前只做文件信息预览和项目记录，不上传、不识别、不接 AI。</p>
 
         {!isCurrentFileMatched && (
           <p className="warning">
@@ -214,8 +241,13 @@ export function UploadSimulator() {
           </div>
         </div>
 
-        <button className="button primary" onClick={createLocalTask} type="button">
-          创建本地任务
+        <button
+          className="button primary"
+          disabled={isCreating}
+          onClick={createTask}
+          type="button"
+        >
+          {isCreating ? "正在创建" : "创建任务"}
         </button>
       </div>
     </div>

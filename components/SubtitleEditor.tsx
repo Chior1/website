@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { downloadTextFile } from "@/lib/download";
 import { subtitles } from "@/lib/mock-data";
@@ -50,15 +50,40 @@ export function SubtitleEditor({ project }: { project?: LocalProject }) {
   const [message, setMessage] = useState("");
   const [draftMessage, setDraftMessage] = useState("");
   const projectDraftId = project?.id ?? "demo-video-subtitles";
+  const autoSaveReadyRef = useRef(false);
 
   useEffect(() => {
+    autoSaveReadyRef.current = false;
     const draft = readDraft(projectDraftId);
 
-    if (draft?.kind !== "subtitle") return;
+    if (draft?.kind === "subtitle") {
+      setItems(draft.items);
+      setDraftMessage(`已恢复 ${draft.savedAt} 保存的本地草稿。`);
+    }
 
-    setItems(draft.items);
-    setDraftMessage(`已恢复 ${draft.savedAt} 保存的本地草稿。`);
+    const timer = window.setTimeout(() => {
+      autoSaveReadyRef.current = true;
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [projectDraftId]);
+
+  useEffect(() => {
+    if (!autoSaveReadyRef.current) return;
+
+    const timer = window.setTimeout(() => {
+      const savedAt = new Date().toLocaleString("zh-CN");
+
+      writeDraft(projectDraftId, {
+        kind: "subtitle",
+        items,
+        savedAt
+      });
+      setDraftMessage(`已自动保存本地草稿：${savedAt}`);
+    }, 900);
+
+    return () => window.clearTimeout(timer);
+  }, [items, projectDraftId]);
 
   const matchCount = useMemo(() => {
     if (!searchText) return 0;
@@ -213,6 +238,7 @@ export function SubtitleEditor({ project }: { project?: LocalProject }) {
             {project
               ? `${project.fileName} · ${project.fileFormat} · ${project.status}。当前仍使用示例字幕内容。`
               : "示例状态：已生成字幕草稿，可以编辑文字、时间码和字幕块。"}
+            {" "}编辑后会自动保存到当前浏览器，也可以手动保存草稿。
           </p>
         </div>
         <div className="actions">

@@ -18,17 +18,42 @@ import {
   updateProjectStatus,
   type LocalProject
 } from "@/lib/local-projects";
+import {
+  deleteBackendProject,
+  fetchBackendProjects,
+  updateBackendProjectStatus
+} from "@/lib/project-api";
 
 export function DashboardClient() {
   const [items, setItems] = useState<LocalProject[]>([]);
   const [exportItems, setExportItems] = useState<ExportRecord[]>([]);
   const [message, setMessage] = useState("");
+  const [dataSource, setDataSource] = useState<"loading" | "backend" | "local">("loading");
   const [keyword, setKeyword] = useState("");
   const [typeFilter, setTypeFilter] = useState<"全部" | "音频纪要" | "视频字幕">("全部");
   const [statusFilter, setStatusFilter] = useState<"全部" | "已完成" | "处理中" | "草稿">("全部");
 
   useEffect(() => {
-    setItems(readProjects());
+    async function loadProjects() {
+      try {
+        const backendProjects = await fetchBackendProjects();
+        setItems(backendProjects);
+        setDataSource("backend");
+        if (backendProjects.length === 0) {
+          setMessage("已连接 Supabase。当前云端数据库还没有项目，可以从“新建任务”创建。");
+        }
+      } catch (error) {
+        setItems(readProjects());
+        setDataSource("local");
+        setMessage(
+          error instanceof Error
+            ? `${error.message} 当前先显示浏览器本地演示数据。`
+            : "后端暂时不可用，当前先显示浏览器本地演示数据。"
+        );
+      }
+    }
+
+    loadProjects();
     setExportItems(readExportRecords());
   }, []);
 
@@ -53,18 +78,48 @@ export function DashboardClient() {
   }, [items, keyword, statusFilter, typeFilter]);
   const exportCount = exportItems.length;
 
-  function markDone(project: LocalProject) {
+  async function markDone(project: LocalProject) {
+    if (dataSource === "backend") {
+      try {
+        const updatedProject = await updateBackendProjectStatus(project.id, "已完成");
+        setItems((current) =>
+          current.map((item) => (item.id === project.id ? updatedProject : item))
+        );
+        setMessage(`「${project.title}」已在 Supabase 标记为完成。`);
+      } catch (error) {
+        setMessage(
+          error instanceof Error ? error.message : "更新 Supabase 项目状态失败。"
+        );
+      }
+      return;
+    }
+
     const nextProjects = updateProjectStatus(project.id, "已完成");
     setItems(nextProjects);
-    setMessage(`「${project.title}」已标记为完成。`);
+    setMessage(`「${project.title}」已在本地标记为完成。`);
   }
 
-  function removeProject(project: LocalProject) {
+  async function removeProject(project: LocalProject) {
     const confirmed = window.confirm(
-      `确认删除「${project.title}」吗？这只会删除浏览器里的本地演示数据。`
+      `确认删除「${project.title}」吗？${
+        dataSource === "backend"
+          ? "这会删除 Supabase 里的项目记录。"
+          : "这只会删除浏览器里的本地演示数据。"
+      }`
     );
 
     if (!confirmed) return;
+
+    if (dataSource === "backend") {
+      try {
+        await deleteBackendProject(project.id);
+        setItems((current) => current.filter((item) => item.id !== project.id));
+        setMessage(`「${project.title}」已从 Supabase 删除。`);
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : "删除 Supabase 项目失败。");
+      }
+      return;
+    }
 
     const nextProjects = deleteProject(project.id);
     const nextExportRecords = deleteExportRecordsByProject(project.id);
@@ -99,7 +154,12 @@ export function DashboardClient() {
       <div className="workspace-header">
         <div>
           <h1>工作台</h1>
-          <p className="muted">统一查看项目、处理中任务、最近编辑和导出记录。</p>
+          <p className="muted">
+            统一查看项目、处理中任务、最近编辑和导出记录。
+            {dataSource === "backend" && " 当前项目数据来自 Supabase。"}
+            {dataSource === "local" && " 当前项目数据来自浏览器本地演示。"}
+            {dataSource === "loading" && " 正在读取项目数据。"}
+          </p>
         </div>
         <div className="actions">
           <button className="button secondary" onClick={restoreExamples} type="button">
@@ -134,7 +194,7 @@ export function DashboardClient() {
             <div>
               <h2>项目列表</h2>
               <p className="muted">
-                新建任务会保存在当前浏览器里，点击“打开”进入 /projects/项目ID 详情页。
+                新建任务会优先保存到 Supabase；如果后端未配置，会退回浏览器本地演示。
               </p>
             </div>
           </div>
